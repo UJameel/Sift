@@ -1,0 +1,1019 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Sift — your product's feedback, distilled.</title>
+  <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #0a0b0d;
+      --surface: #111318;
+      --surface2: #1a1d24;
+      --border: #252830;
+      --border2: #2e3240;
+      --text: #e8eaf0;
+      --text2: #8891a4;
+      --text3: #545d6e;
+      --accent: #6c8ef7;
+      --accent2: #8b5cf6;
+      --green: #22c55e;
+      --yellow: #f59e0b;
+      --red: #ef4444;
+      --orange: #f97316;
+      --radius: 10px;
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Inter', sans-serif;
+      font-size: 14px;
+      line-height: 1.5;
+      min-height: 100vh;
+    }
+
+    /* Layout */
+    .header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 16px 24px;
+      border-bottom: 1px solid var(--border);
+      background: var(--surface);
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+
+    .logo {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-weight: 700;
+      font-size: 16px;
+      letter-spacing: -0.3px;
+    }
+
+    .logo-dot {
+      width: 8px;
+      height: 8px;
+      background: var(--green);
+      border-radius: 50%;
+      animation: pulse 2s infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.6; transform: scale(1.2); }
+    }
+
+    .header-actions {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+    }
+
+    .main {
+      display: grid;
+      grid-template-columns: 1fr 360px;
+      grid-template-rows: auto 1fr;
+      gap: 20px;
+      padding: 20px 24px;
+      max-width: 1400px;
+      margin: 0 auto;
+    }
+
+    /* Stats row */
+    .stats-row {
+      grid-column: 1 / -1;
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      gap: 12px;
+    }
+
+    .stat-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 16px;
+      transition: border-color 0.2s;
+    }
+
+    .stat-card:hover { border-color: var(--border2); }
+
+    .stat-label {
+      color: var(--text3);
+      font-size: 11px;
+      font-weight: 500;
+      text-transform: uppercase;
+      letter-spacing: 0.8px;
+      margin-bottom: 8px;
+    }
+
+    .stat-value {
+      font-size: 28px;
+      font-weight: 700;
+      font-family: 'JetBrains Mono', monospace;
+      letter-spacing: -1px;
+    }
+
+    .stat-sub {
+      font-size: 11px;
+      color: var(--text3);
+      margin-top: 2px;
+    }
+
+    /* Left column */
+    .left-col {
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+      min-width: 0;
+    }
+
+    /* Right sidebar */
+    .right-col {
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
+
+    /* Cards */
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      overflow: hidden;
+    }
+
+    .card-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 14px 18px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .card-title {
+      font-weight: 600;
+      font-size: 13px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .card-body {
+      padding: 14px 18px;
+    }
+
+    /* Buttons */
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 7px 14px;
+      border-radius: 6px;
+      font-size: 13px;
+      font-weight: 500;
+      cursor: pointer;
+      border: none;
+      transition: all 0.15s;
+      font-family: inherit;
+    }
+
+    .btn-primary {
+      background: var(--accent);
+      color: #fff;
+    }
+    .btn-primary:hover { background: #5a7ef5; }
+    .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
+
+    .btn-ghost {
+      background: transparent;
+      color: var(--text2);
+      border: 1px solid var(--border2);
+    }
+    .btn-ghost:hover { color: var(--text); border-color: var(--text3); }
+
+    .btn-danger {
+      background: transparent;
+      color: var(--red);
+      border: 1px solid var(--border);
+    }
+    .btn-danger:hover { background: rgba(239,68,68,0.1); }
+
+    .btn-sm { padding: 4px 10px; font-size: 12px; }
+
+    /* Severity badge */
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      padding: 2px 8px;
+      border-radius: 4px;
+      font-size: 11px;
+      font-weight: 600;
+      font-family: 'JetBrains Mono', monospace;
+    }
+
+    .badge-critical { background: rgba(239,68,68,0.15); color: var(--red); }
+    .badge-high { background: rgba(249,115,22,0.15); color: var(--orange); }
+    .badge-medium { background: rgba(245,158,11,0.15); color: var(--yellow); }
+    .badge-low { background: rgba(34,197,94,0.15); color: var(--green); }
+    .badge-info { background: rgba(108,142,247,0.15); color: var(--accent); }
+
+    .source-tag {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 2px 8px;
+      border-radius: 4px;
+      font-size: 11px;
+      font-weight: 500;
+      background: var(--surface2);
+      color: var(--text2);
+    }
+
+    /* Signal card */
+    .signal-card {
+      padding: 14px 18px;
+      border-bottom: 1px solid var(--border);
+      transition: background 0.1s;
+      cursor: default;
+    }
+
+    .signal-card:last-child { border-bottom: none; }
+    .signal-card:hover { background: var(--surface2); }
+
+    .signal-header {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 6px;
+    }
+
+    .signal-title {
+      font-weight: 500;
+      font-size: 13px;
+      line-height: 1.4;
+      flex: 1;
+    }
+
+    .signal-body {
+      color: var(--text2);
+      font-size: 12px;
+      line-height: 1.5;
+      margin-bottom: 8px;
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+    }
+
+    .signal-meta {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .signal-actions {
+      display: flex;
+      gap: 6px;
+      margin-top: 8px;
+    }
+
+    /* Log entry */
+    .log-entry {
+      display: flex;
+      gap: 10px;
+      padding: 10px 18px;
+      border-bottom: 1px solid var(--border);
+      font-size: 12px;
+    }
+
+    .log-entry:last-child { border-bottom: none; }
+
+    .log-icon {
+      width: 20px;
+      height: 20px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 10px;
+      flex-shrink: 0;
+      margin-top: 1px;
+    }
+
+    .log-icon-escalated { background: rgba(239,68,68,0.15); color: var(--red); }
+    .log-icon-queued { background: rgba(245,158,11,0.15); color: var(--yellow); }
+    .log-icon-ignored { background: rgba(84,93,110,0.3); color: var(--text3); }
+
+    .log-text { color: var(--text2); flex: 1; line-height: 1.5; }
+    .log-text strong { color: var(--text); font-weight: 500; }
+    .log-time { color: var(--text3); font-family: 'JetBrains Mono', monospace; font-size: 10px; white-space: nowrap; }
+
+    /* Rules list */
+    .rule-item {
+      padding: 10px 18px;
+      border-bottom: 1px solid var(--border);
+      font-size: 12px;
+      color: var(--text2);
+      line-height: 1.5;
+      display: flex;
+      gap: 10px;
+      align-items: flex-start;
+    }
+    .rule-item:last-child { border-bottom: none; }
+
+    .rule-conf {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 10px;
+      color: var(--green);
+      white-space: nowrap;
+    }
+
+    /* Inject form */
+    .inject-form {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    input, select, textarea {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      color: var(--text);
+      padding: 8px 12px;
+      font-family: inherit;
+      font-size: 13px;
+      width: 100%;
+      transition: border-color 0.15s;
+    }
+
+    input:focus, select:focus, textarea:focus {
+      outline: none;
+      border-color: var(--accent);
+    }
+
+    textarea { resize: vertical; min-height: 70px; }
+
+    /* Chart */
+    .chart-container {
+      padding: 14px 18px;
+      position: relative;
+      height: 180px;
+    }
+
+    /* Toast */
+    .toast-container {
+      position: fixed;
+      bottom: 24px;
+      right: 24px;
+      z-index: 999;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .toast {
+      background: var(--surface2);
+      border: 1px solid var(--border2);
+      border-radius: 8px;
+      padding: 12px 16px;
+      font-size: 13px;
+      max-width: 320px;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.4);
+      animation: slide-in 0.2s ease;
+    }
+
+    @keyframes slide-in {
+      from { transform: translateX(20px); opacity: 0; }
+      to { transform: translateX(0); opacity: 1; }
+    }
+
+    .toast.success { border-left: 3px solid var(--green); }
+    .toast.error { border-left: 3px solid var(--red); }
+    .toast.info { border-left: 3px solid var(--accent); }
+
+    /* Scanning overlay */
+    .scanning-bar {
+      height: 2px;
+      background: linear-gradient(90deg, transparent, var(--accent), transparent);
+      background-size: 200% 100%;
+      animation: scan-sweep 1.5s linear infinite;
+    }
+
+    @keyframes scan-sweep {
+      0% { background-position: -100% 0; }
+      100% { background-position: 200% 0; }
+    }
+
+    .empty-state {
+      text-align: center;
+      padding: 32px;
+      color: var(--text3);
+      font-size: 13px;
+    }
+
+    /* Scrollable lists */
+    .scroll-list { max-height: 420px; overflow-y: auto; }
+    .scroll-list::-webkit-scrollbar { width: 4px; }
+    .scroll-list::-webkit-scrollbar-track { background: transparent; }
+    .scroll-list::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 2px; }
+
+    .spinner {
+      display: inline-block;
+      width: 14px;
+      height: 14px;
+      border: 2px solid rgba(255,255,255,0.3);
+      border-top-color: #fff;
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* Responsive */
+    @media (max-width: 900px) {
+      .main { grid-template-columns: 1fr; }
+      .stats-row { grid-template-columns: repeat(3, 1fr); }
+    }
+  </style>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/babel">
+const { useState, useEffect, useRef, useCallback } = React;
+
+const API = '';
+
+async function api(path, opts = {}) {
+  const r = await fetch(API + path, {
+    headers: { 'Content-Type': 'application/json' },
+    ...opts
+  });
+  if (!r.ok) throw new Error(`${r.status}: ${await r.text()}`);
+  return r.json();
+}
+
+function severityLevel(score) {
+  if (score >= 9) return ['critical', 'CRIT'];
+  if (score >= 7) return ['high', `${score.toFixed(1)}`];
+  if (score >= 5) return ['medium', `${score.toFixed(1)}`];
+  if (score >= 3) return ['low', `${score.toFixed(1)}`];
+  return ['info', `${score.toFixed(1)}`];
+}
+
+function sourceIcon(source) {
+  const map = { github_issue: '⚙', app_review: '★', slack: '#', support_ticket: '✉', default: '◆' };
+  return map[source] || map.default;
+}
+
+function timeAgo(ts) {
+  if (!ts) return '';
+  const d = new Date(ts + (ts.endsWith('Z') ? '' : 'Z'));
+  const s = Math.floor((Date.now() - d) / 1000);
+  if (s < 60) return `${s}s ago`;
+  if (s < 3600) return `${Math.floor(s/60)}m ago`;
+  return `${Math.floor(s/3600)}h ago`;
+}
+
+function Toast({ toasts }) {
+  return (
+    <div className="toast-container">
+      {toasts.map(t => (
+        <div key={t.id} className={`toast ${t.type}`}>{t.msg}</div>
+      ))}
+    </div>
+  );
+}
+
+function AccuracyChart({ data }) {
+  const canvasRef = useRef(null);
+  const chartRef = useRef(null);
+
+  useEffect(() => {
+    if (!canvasRef.current || !data?.history) return;
+    if (chartRef.current) chartRef.current.destroy();
+
+    const labels = data.history.map(d => `Scan ${d.scan_number}`);
+    const values = data.history.map(d => Math.round(d.accuracy * 100));
+
+    chartRef.current = new Chart(canvasRef.current, {
+      type: 'line',
+      data: {
+        labels,
+        datasets: [{
+          label: 'Accuracy %',
+          data: values,
+          borderColor: '#6c8ef7',
+          backgroundColor: 'rgba(108,142,247,0.08)',
+          borderWidth: 2,
+          pointBackgroundColor: '#6c8ef7',
+          pointRadius: 4,
+          pointHoverRadius: 6,
+          fill: true,
+          tension: 0.4
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: { display: false },
+          tooltip: {
+            backgroundColor: '#1a1d24',
+            borderColor: '#2e3240',
+            borderWidth: 1,
+            titleColor: '#e8eaf0',
+            bodyColor: '#8891a4',
+            callbacks: { label: ctx => ` ${ctx.raw}% accuracy` }
+          }
+        },
+        scales: {
+          x: {
+            grid: { color: '#252830' },
+            ticks: { color: '#545d6e', font: { size: 10 } }
+          },
+          y: {
+            min: 0, max: 100,
+            grid: { color: '#252830' },
+            ticks: { color: '#545d6e', font: { size: 10 }, callback: v => v + '%' }
+          }
+        }
+      }
+    });
+    return () => { if (chartRef.current) chartRef.current.destroy(); };
+  }, [data]);
+
+  if (!data?.history?.length) return <div className="empty-state">No accuracy data yet — run a scan and submit feedback</div>;
+
+  return <div className="chart-container"><canvas ref={canvasRef} /></div>;
+}
+
+function parseGitHubUrl(url) {
+  // Handles: https://github.com/owner/repo, github.com/owner/repo, owner/repo
+  const clean = url.trim().replace(/^https?:\/\//, '').replace(/^github\.com\//, '');
+  const parts = clean.replace(/\/$/, '').split('/');
+  if (parts.length >= 2) return { owner: parts[0], repo: parts[1] };
+  return null;
+}
+
+function App() {
+  const [signals, setSignals] = useState([]);
+  const [decisions, setDecisions] = useState([]);
+  const [rules, setRules] = useState([]);
+  const [accuracy, setAccuracy] = useState(null);
+  const [scanning, setScanning] = useState(false);
+  const [injecting, setInjecting] = useState(false);
+  const [ingesting, setIngesting] = useState(false);
+  const [toasts, setToasts] = useState([]);
+  const [injectForm, setInjectForm] = useState({ title: '', body: '', source: 'github_issue', author: '' });
+  const [showInject, setShowInject] = useState(false);
+  const [showIngest, setShowIngest] = useState(false);
+  const [repoUrl, setRepoUrl] = useState('');
+  const [repoLimit, setRepoLimit] = useState(10);
+  const toastId = useRef(0);
+
+  const toast = (msg, type = 'info') => {
+    const id = ++toastId.current;
+    setToasts(t => [...t, { id, msg, type }]);
+    setTimeout(() => setToasts(t => t.filter(x => x.id !== id)), 4000);
+  };
+
+  const load = useCallback(async () => {
+    try {
+      const [sigs, decs, rls, acc] = await Promise.all([
+        api('/signals?limit=30'),
+        api('/agent/decisions?limit=20'),
+        api('/agent/learned-rules'),
+        api('/agent/accuracy')
+      ]);
+      setSignals(sigs);
+      setDecisions(decs);
+      setRules(rls);
+      setAccuracy(acc);
+    } catch (e) {
+      toast('Failed to load data: ' + e.message, 'error');
+    }
+  }, []);
+
+  useEffect(() => { load(); }, [load]);
+
+  const runScan = async () => {
+    setScanning(true);
+    try {
+      const result = await api('/agent/scan', { method: 'POST' });
+      if (result.escalated > 0) {
+        toast(`${result.escalated} critical signal${result.escalated > 1 ? 's' : ''} escalated — call +1 (415) 360-1802 if you miss the call`, 'error');
+      } else {
+        toast(`Scan complete: ${result.total_processed} signals analyzed, none critical`, 'success');
+      }
+      await load();
+    } catch (e) {
+      toast('Scan failed: ' + e.message, 'error');
+    } finally {
+      setScanning(false);
+    }
+  };
+
+  const ingestGitHub = async () => {
+    const parsed = parseGitHubUrl(repoUrl);
+    if (!parsed) {
+      toast('Paste a valid GitHub repo URL first', 'error');
+      return;
+    }
+    setIngesting(true);
+    try {
+      const result = await api(`/agent/ingest?owner=${parsed.owner}&repo=${parsed.repo}&limit=${repoLimit}`, { method: 'POST' });
+      toast(`Ingested ${result.ingested} new signals from ${parsed.owner}/${parsed.repo}`, 'success');
+      setShowIngest(false);
+      setRepoUrl('');
+      await load();
+    } catch (e) {
+      toast('Ingest failed: ' + e.message, 'error');
+    } finally {
+      setIngesting(false);
+    }
+  };
+
+  const injectSignal = async () => {
+    if (!injectForm.title) return;
+    setInjecting(true);
+    try {
+      await api('/signals', {
+        method: 'POST',
+        body: JSON.stringify({
+          source: injectForm.source,
+          title: injectForm.title,
+          body: injectForm.body,
+          author: injectForm.author || 'demo_user'
+        })
+      });
+      toast('Signal injected — run scan to analyze', 'success');
+      setInjectForm({ title: '', body: '', source: 'github_issue', author: '' });
+      setShowInject(false);
+      await load();
+    } catch (e) {
+      toast('Inject failed: ' + e.message, 'error');
+    } finally {
+      setInjecting(false);
+    }
+  };
+
+  const submitFeedback = async (decisionId, response, signal) => {
+    const isGeneratingPr = response === 'generate_pr';
+    if (isGeneratingPr) toast('Generating PR fix… this may take 20-30s', 'info');
+    try {
+      const result = await api(`/feedback/${decisionId}`, {
+        method: 'POST',
+        body: JSON.stringify({ response, response_details: `Manual: ${response}` })
+      });
+      if (result.pr?.url) {
+        toast(`PR opened: ${result.pr.url}`, 'success');
+        window.open(result.pr.url, '_blank');
+      } else if (result.pr?.error) {
+        toast(`PR failed: ${result.pr.error}`, 'error');
+      } else {
+        toast(`Feedback recorded: ${response.replace(/_/g, ' ')}`, 'success');
+      }
+      await load();
+    } catch (e) {
+      toast('Feedback failed: ' + e.message, 'error');
+    }
+  };
+
+  const resetSignals = async () => {
+    await api('/agent/reset-signals', { method: 'POST' });
+    toast('Signals reset — ready for another demo scan', 'info');
+    await load();
+  };
+
+  // Stats
+  const totalSignals = signals.length;
+  const escalated = signals.filter(s => s.is_escalated).length;
+  const processed = signals.filter(s => s.processed_at).length;
+  const currentAcc = accuracy?.current_accuracy;
+  const ruleCount = rules.length;
+
+  const unprocessed = signals.filter(s => !s.processed_at).length;
+
+  return (
+    <>
+      <header className="header">
+        <div className="logo">
+          <div className="logo-dot" />
+          Sift
+          <span style={{color:'var(--text3)', fontWeight:400, fontSize:12}}>— your product's feedback, distilled.</span>
+        </div>
+        <div className="header-actions">
+          <button className="btn btn-ghost btn-sm" onClick={() => setShowIngest(v => !v)}>⬇ Ingest GitHub</button>
+          <button className="btn btn-ghost btn-sm" onClick={() => setShowInject(v => !v)}>+ Inject Signal</button>
+          <button className="btn btn-ghost btn-sm" onClick={resetSignals}>↺ Reset</button>
+          <button
+            className="btn btn-primary"
+            onClick={runScan}
+            disabled={scanning}
+          >
+            {scanning ? <><span className="spinner" /> Scanning...</> : '▶ Run Scan'}
+          </button>
+        </div>
+      </header>
+
+      {scanning && <div className="scanning-bar" />}
+
+      <main className="main">
+        {/* Stats row */}
+        <div className="stats-row">
+          <div className="stat-card">
+            <div className="stat-label">Total Signals</div>
+            <div className="stat-value" style={{color:'var(--accent)'}}>{totalSignals}</div>
+            <div className="stat-sub">{unprocessed} unprocessed</div>
+          </div>
+          <div className="stat-card">
+            <div className="stat-label">Escalated</div>
+            <div className="stat-value" style={{color:'var(--red)'}}>{escalated}</div>
+            <div className="stat-sub">{totalSignals ? Math.round(escalated/totalSignals*100) : 0}% escalation rate</div>
+          </div>
+          <div className="stat-card">
+            <div className="stat-label">Processed</div>
+            <div className="stat-value" style={{color:'var(--green)'}}>{processed}</div>
+            <div className="stat-sub">of {totalSignals} signals</div>
+          </div>
+          <div className="stat-card">
+            <div className="stat-label">Accuracy</div>
+            <div className="stat-value" style={{color: currentAcc >= 0.8 ? 'var(--green)' : currentAcc >= 0.6 ? 'var(--yellow)' : 'var(--red)'}}>
+              {currentAcc != null ? `${Math.round(currentAcc * 100)}%` : '—'}
+            </div>
+            <div className="stat-sub">current accuracy</div>
+          </div>
+          <div className="stat-card">
+            <div className="stat-label">Learned Rules</div>
+            <div className="stat-value" style={{color:'var(--accent2)'}}>{ruleCount}</div>
+            <div className="stat-sub">active heuristics</div>
+          </div>
+        </div>
+
+        {/* Left column */}
+        <div className="left-col">
+          {/* Ingest GitHub form */}
+          {showIngest && (
+            <div className="card">
+              <div className="card-header">
+                <div className="card-title">⬇ Ingest GitHub Issues</div>
+                <button className="btn btn-ghost btn-sm" onClick={() => setShowIngest(false)}>✕</button>
+              </div>
+              <div className="card-body">
+                <div className="inject-form">
+                  <input
+                    placeholder="Paste GitHub URL — e.g. https://github.com/owner/repo"
+                    value={repoUrl}
+                    onChange={e => setRepoUrl(e.target.value)}
+                    onKeyDown={e => e.key === 'Enter' && ingestGitHub()}
+                    autoFocus
+                  />
+                  <div style={{display:'flex', gap:8, alignItems:'center'}}>
+                    <label style={{color:'var(--text2)', fontSize:12, whiteSpace:'nowrap'}}>Issues to pull:</label>
+                    <select value={repoLimit} onChange={e => setRepoLimit(Number(e.target.value))} style={{flex:1}}>
+                      <option value={5}>5</option>
+                      <option value={10}>10</option>
+                      <option value={20}>20</option>
+                      <option value={50}>50</option>
+                    </select>
+                  </div>
+                  <button className="btn btn-primary" onClick={ingestGitHub} disabled={ingesting || !repoUrl.trim()}>
+                    {ingesting ? <><span className="spinner" /> Ingesting...</> : 'Pull Issues'}
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Inject form */}
+          {showInject && (
+            <div className="card">
+              <div className="card-header">
+                <div className="card-title">+ Inject Demo Signal</div>
+                <button className="btn btn-ghost btn-sm" onClick={() => setShowInject(false)}>✕</button>
+              </div>
+              <div className="card-body">
+                <div className="inject-form">
+                  <select value={injectForm.source} onChange={e => setInjectForm(f => ({...f, source: e.target.value}))}>
+                    <option value="github_issue">GitHub Issue</option>
+                    <option value="app_review">App Review</option>
+                    <option value="slack">Slack</option>
+                    <option value="support_ticket">Support Ticket</option>
+                  </select>
+                  <input
+                    placeholder="Signal title (e.g. Production database is down)"
+                    value={injectForm.title}
+                    onChange={e => setInjectForm(f => ({...f, title: e.target.value}))}
+                  />
+                  <textarea
+                    placeholder="Signal body / details..."
+                    value={injectForm.body}
+                    onChange={e => setInjectForm(f => ({...f, body: e.target.value}))}
+                  />
+                  <input
+                    placeholder="Author (optional)"
+                    value={injectForm.author}
+                    onChange={e => setInjectForm(f => ({...f, author: e.target.value}))}
+                  />
+                  <div style={{display:'flex', gap:8}}>
+                    <button className="btn btn-primary" onClick={injectSignal} disabled={injecting || !injectForm.title}>
+                      {injecting ? <><span className="spinner" /> Injecting...</> : 'Inject Signal'}
+                    </button>
+                    <button className="btn btn-ghost" onClick={() => setShowInject(false)}>Cancel</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Signal Feed */}
+          <div className="card">
+            <div className="card-header">
+              <div className="card-title">
+                <span>◆</span> Signal Feed
+                <span style={{color:'var(--text3)', fontWeight:400}}>{signals.length} signals</span>
+              </div>
+            </div>
+            <div className="scroll-list">
+              {signals.length === 0 ? (
+                <div className="empty-state">No signals yet — click "Ingest GitHub" or "Inject Signal"</div>
+              ) : signals.map(s => {
+                const [lvl, badge] = severityLevel(s.severity_score);
+                return (
+                  <div className="signal-card" key={s.id}>
+                    <div className="signal-header">
+                      <div className="signal-title">{s.title}</div>
+                      {s.severity_score > 0 && (
+                        <span className={`badge badge-${lvl}`}>{badge}</span>
+                      )}
+                    </div>
+                    <div className="signal-body">{s.body}</div>
+                    <div className="signal-meta">
+                      <span className="source-tag">{sourceIcon(s.source)} {s.source?.replace('_',' ')}</span>
+                      {s.author && <span style={{color:'var(--text3)', fontSize:11}}>by {s.author}</span>}
+                      {s.category && <span className={`badge badge-info`}>{s.category?.replace('_',' ')}</span>}
+                      {s.is_escalated && <span className="badge badge-critical">ESCALATED</span>}
+                      {!s.processed_at && <span style={{color:'var(--text3)',fontSize:11}}>⏳ pending</span>}
+                    </div>
+                    {s.agent_reasoning && (
+                      <div style={{marginTop:6, fontSize:11, color:'var(--text3)', fontStyle:'italic'}}>
+                        Agent: {s.agent_reasoning}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Agent Decision Log */}
+          <div className="card">
+            <div className="card-header">
+              <div className="card-title">
+                <span>🤖</span> Agent Decision Log
+              </div>
+            </div>
+            <div className="scroll-list">
+              {decisions.length === 0 ? (
+                <div className="empty-state">No decisions yet — run a scan</div>
+              ) : decisions.map(d => {
+                const icon = d.action_taken === 'escalated' ? '🔴' : d.action_taken === 'queued' ? '🟡' : '⚫';
+                const isGitHub = d.source === 'github_issue';
+                // Find matching signal for pr_url
+                const sig = signals.find(s => s.id === d.signal_id);
+                return (
+                  <div className="log-entry" key={d.id}>
+                    <div className={`log-icon log-icon-${d.action_taken}`}>{icon}</div>
+                    <div className="log-text">
+                      <strong>{d.title?.substring(0,50)}</strong><br />
+                      <span style={{color:'var(--text3)'}}>{d.source?.replace('_',' ')}</span>
+                      {' — '}{d.action_taken?.toUpperCase()} · severity {d.severity_score?.toFixed(1)}
+                      <br /><span style={{fontSize:11}}>{d.reasoning}</span>
+                      {sig?.pr_url && (
+                        <div style={{marginTop:4}}>
+                          <a href={sig.pr_url} target="_blank" rel="noreferrer"
+                            style={{color:'var(--green)', fontSize:11}}>
+                            ✓ PR opened — click to review
+                          </a>
+                        </div>
+                      )}
+                      {d.action_taken !== 'ignored' && !sig?.pr_url && (
+                        <div style={{marginTop:6, display:'flex', gap:6}}>
+                          <button className="btn btn-ghost btn-sm" style={{color:'var(--green)', borderColor:'rgba(34,197,94,0.3)'}}
+                            onClick={() => submitFeedback(d.id, 'good_call', sig)}>✓ Good call</button>
+                          <button className="btn btn-ghost btn-sm" style={{color:'var(--red)', borderColor:'rgba(239,68,68,0.2)'}}
+                            onClick={() => submitFeedback(d.id, 'not_important', sig)}>✗ Not important</button>
+                          {isGitHub ? (
+                            <button className="btn btn-ghost btn-sm" style={{color:'var(--accent)'}}
+                              onClick={() => submitFeedback(d.id, 'generate_pr', sig)}>⚡ Generate PR</button>
+                          ) : (
+                            <button className="btn btn-ghost btn-sm" style={{color:'var(--accent)'}}
+                              onClick={() => submitFeedback(d.id, 'create_issue', sig)}>⚙ Create issue</button>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                    <div className="log-time">{timeAgo(d.created_at)}</div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+
+        {/* Right sidebar */}
+        <div className="right-col">
+          {/* Accuracy chart */}
+          <div className="card">
+            <div className="card-header">
+              <div className="card-title">
+                <span>📈</span> Accuracy Over Time
+              </div>
+              {currentAcc != null && (
+                <span className="badge badge-low">{Math.round(currentAcc*100)}% current</span>
+              )}
+            </div>
+            <AccuracyChart data={accuracy} />
+            <div style={{padding:'0 18px 14px', fontSize:11, color:'var(--text3)'}}>
+              The agent learns from your feedback. Each approved/dismissed decision improves future scoring.
+            </div>
+          </div>
+
+          {/* Learned Rules */}
+          <div className="card">
+            <div className="card-header">
+              <div className="card-title">
+                <span>🧠</span> Learned Rules
+                <span style={{color:'var(--text3)', fontWeight:400}}>{rules.length}</span>
+              </div>
+            </div>
+            <div className="scroll-list" style={{maxHeight:300}}>
+              {rules.length === 0 ? (
+                <div className="empty-state">No rules yet — submit feedback to start learning</div>
+              ) : rules.map(r => (
+                <div className="rule-item" key={r.id}>
+                  <span>→</span>
+                  <span style={{flex:1}}>{r.rule}</span>
+                  <span className="rule-conf">{Math.round(r.confidence*100)}%</span>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Quick actions */}
+          <div className="card">
+            <div className="card-header">
+              <div className="card-title">⚡ Quick Actions</div>
+            </div>
+            <div className="card-body" style={{display:'flex', flexDirection:'column', gap:8}}>
+              <button className="btn btn-ghost" style={{justifyContent:'flex-start'}} onClick={runScan} disabled={scanning}>
+                {scanning ? <><span className="spinner" /> Scanning...</> : '▶ Run full scan'}
+              </button>
+              <button className="btn btn-ghost" style={{justifyContent:'flex-start'}} onClick={ingestGitHub}>
+                ⬇ Pull from GitHub
+              </button>
+              <button className="btn btn-ghost" style={{justifyContent:'flex-start'}} onClick={() => setShowInject(true)}>
+                + Inject demo signal
+              </button>
+              <button className="btn btn-danger" style={{justifyContent:'flex-start'}} onClick={resetSignals}>
+                ↺ Reset all signals
+              </button>
+            </div>
+          </div>
+
+          {/* Sponsor badges */}
+          <div className="card">
+            <div className="card-header">
+              <div className="card-title">🔧 Powered By</div>
+            </div>
+            <div className="card-body" style={{display:'flex', flexWrap:'wrap', gap:6}}>
+              {['Airbyte', 'Ghost DB', 'Bland AI', 'Overmind', 'Auth0'].map(s => (
+                <span key={s} className="source-tag" style={{fontSize:12}}>{s}</span>
+              ))}
+            </div>
+          </div>
+        </div>
+      </main>
+
+      <Toast toasts={toasts} />
+    </>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+</script>
+</body>
+</html>
