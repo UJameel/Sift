@@ -15,6 +15,7 @@ async def call_founder(signal: dict, decision: dict) -> dict:
         "phone_number": ALERT_PHONE_NUMBER,
         "from": BLAND_FROM_NUMBER or None,
         "record": True,
+        "max_duration": 5,
         "metadata": {
             "signal_id": signal.get("id"),
             "decision_id": decision.get("id"),

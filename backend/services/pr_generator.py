@@ -215,21 +215,15 @@ Rules:
 - If you cannot determine a concrete fix from the available context, return {{"files": [], "summary": "Insufficient context", "explanation": "..."}}
 - Return ONLY the JSON, no markdown fences"""
 
-    headers = {"Authorization": f"Bearer {OPENAI_API_KEY}", "Content-Type": "application/json"}
-    payload = {
-        "model": "gpt-4o",
-        "messages": [{"role": "user", "content": prompt}],
-        "temperature": 0.2,
-        "max_tokens": 4000,
-    }
-
-    async with httpx.AsyncClient() as client:
-        resp = await client.post(
-            "https://api.openai.com/v1/chat/completions",
-            headers=headers, json=payload, timeout=60.0
-        )
-        resp.raise_for_status()
-        raw = resp.json()["choices"][0]["message"]["content"].strip()
+    from openai import AsyncOpenAI
+    oai = AsyncOpenAI(api_key=OPENAI_API_KEY)
+    response = await oai.chat.completions.create(
+        model="gpt-4o",
+        messages=[{"role": "user", "content": prompt}],
+        temperature=0.2,
+        max_tokens=4000,
+    )
+    raw = response.choices[0].message.content.strip()
 
     # Strip markdown fences if model added them anyway
     raw = re.sub(r'^```(?:json)?\n?', '', raw).rstrip('`').strip()

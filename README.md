@@ -33,11 +33,11 @@ Sift watches all your channels, learns what matters to **you specifically**, and
 
 | Sponsor | Integration |
 |---------|-------------|
-| **Airbyte Agent Connectors** | GitHub issue ingestion via strongly-typed Python SDK |
-| **Ghost** | Postgres database for all agent memory and learned rules |
-| **Bland AI + Norm** | Voice calls when severity > 7, captures verbal response |
-| **Overmind** | Every LLM call is traced, evaluated, and optimized |
-| **Auth0** | Dashboard authentication (React SPA) |
+| **Airbyte Agent Connectors** | `airbyte-agent-github` GraphQL connector — ingests issues, PRs, commits from 21+ sources |
+| **Ghost** | Live Ghost DB provisioned via `ghost create --name sift`. Fork pattern in `ghost.py` enables isolated "what-if" simulations without touching production data |
+| **Bland AI + Norm** | Norm-built pathway calls founder when severity ≥ 7. Captures verbal response, feeds back into learning loop. Inbound fallback at +14153601802 |
+| **Overmind** | `overmind.init(providers=["openai"])` at startup — every GPT-4o/4o-mini call auto-traced, latency + quality visible in Overmind dashboard |
+| **Auth0** | JWT middleware on `/agent/scan` and `/agent/ingest` — verifies RS256 tokens against Auth0 JWKS |
 
 ## Setup
 
@@ -66,11 +66,12 @@ cp .env.example .env
 
 ### Database
 
-Option A — Ghost (recommended):
+Option A — Ghost (recommended, ghost.build):
 ```bash
 curl -fsSL https://install.ghost.build | sh
-ghost db create sift
-# Copy DATABASE_URL from Ghost output to .env
+ghost login
+ghost create --name sift --wait --json
+# Copy the connection string into GHOST_DATABASE_URL in .env
 ```
 
 Option B — Local Postgres:
@@ -78,6 +79,8 @@ Option B — Local Postgres:
 createdb sift
 # Set DATABASE_URL=postgresql://localhost/sift in .env
 ```
+
+> `GHOST_DATABASE_URL` takes priority over `DATABASE_URL` when both are set.
 
 ### Run
 
@@ -105,19 +108,32 @@ For live voice demo: ensure `BLAND_API_KEY` and `ALERT_PHONE_NUMBER` are set. Se
 # List signals
 curl http://localhost:8000/signals
 
-# Run analysis scan
+# Run analysis scan (escalates critical signals + fires Bland AI call)
 curl -X POST http://localhost:8000/agent/scan
 
-# Submit feedback (triggers learning)
+# Ingest real GitHub issues via Airbyte connector
+curl -X POST "http://localhost:8000/agent/ingest?owner=UJameel&repo=Sift"
+
+# Submit feedback (triggers learning loop)
 curl -X POST http://localhost:8000/feedback/1 \
   -H "Content-Type: application/json" \
   -d '{"response": "good_call"}'
 
+# Generate a PR fix for a signal (agentic — reads repo, GPT-4o, opens PR)
+curl -X POST http://localhost:8000/feedback/1 \
+  -H "Content-Type: application/json" \
+  -d '{"response": "generate_pr"}'
+
+# Ghost fork simulation — what-if at different threshold (production unchanged)
+curl -X POST "http://localhost:8000/agent/simulate?threshold=6.0"
+
+# Reset options
+curl -X POST "http://localhost:8000/agent/reset-signals"                          # soft reset
+curl -X POST "http://localhost:8000/agent/reset-signals?full=true"                # delete all data
+curl -X POST "http://localhost:8000/agent/reset-signals?full=true&clear_rules=true" # full + learned rules
+
 # Check accuracy over time
 curl http://localhost:8000/agent/accuracy
-
-# Pull from GitHub
-curl -X POST "http://localhost:8000/agent/ingest?owner=fastapi&repo=fastapi"
 ```
 
 ## Project Structure
@@ -125,20 +141,23 @@ curl -X POST "http://localhost:8000/agent/ingest?owner=fastapi&repo=fastapi"
 ```
 sift/
 ├── backend/
-│   ├── main.py              # FastAPI app + lifespan
-│   ├── config.py            # Env config
+│   ├── main.py              # FastAPI app + Overmind init
+│   ├── config.py            # Env config (Ghost URL priority)
+│   ├── auth.py              # Auth0 JWT middleware
 │   ├── models.py            # Pydantic models
 │   ├── db.py                # asyncpg pool + schema
 │   ├── seed.py              # Demo data seeder
 │   ├── routers/
 │   │   ├── signals.py       # Signal CRUD
-│   │   ├── agent.py         # Scan, ingest, accuracy
-│   │   ├── feedback.py      # Learning loop trigger
+│   │   ├── agent.py         # Scan, ingest, simulate, reset
+│   │   ├── feedback.py      # Learning loop trigger + PR generation
 │   │   └── webhooks.py      # Bland AI callback
 │   └── services/
-│       ├── ingestion.py     # Airbyte GitHub connector
-│       ├── analyzer.py      # LLM analysis + Overmind
-│       ├── bland_caller.py  # Voice alert service
+│       ├── ingestion.py     # Airbyte GitHub connector (GraphQL)
+│       ├── analyzer.py      # LLM analysis + Overmind traces
+│       ├── bland_caller.py  # Voice alert via Norm pathway
+│       ├── ghost.py         # Ghost fork pattern for simulations
+│       ├── pr_generator.py  # Agentic PR generation via OpenAI + GitHub
 │       ├── action_taker.py  # Create GitHub issues
 │       └── learning.py      # Self-improving loop
 ├── dashboard/

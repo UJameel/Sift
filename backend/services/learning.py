@@ -126,22 +126,14 @@ Examples of good rules:
         if not OPENAI_API_KEY:
             return self._mock_rule(prompt)
 
-        async with httpx.AsyncClient() as client:
-            resp = await client.post(
-                "https://api.openai.com/v1/chat/completions",
-                headers={
-                    "Authorization": f"Bearer {OPENAI_API_KEY}",
-                    "Content-Type": "application/json",
-                },
-                json={
-                    "model": "gpt-4o-mini",
-                    "max_tokens": 150,
-                    "messages": [{"role": "user", "content": prompt}]
-                },
-                timeout=20.0
-            )
-            resp.raise_for_status()
-            return resp.json()["choices"][0]["message"]["content"]
+        from openai import AsyncOpenAI
+        client = AsyncOpenAI(api_key=OPENAI_API_KEY)
+        resp = await client.chat.completions.create(
+            model="gpt-4o-mini",
+            max_tokens=150,
+            messages=[{"role": "user", "content": prompt}],
+        )
+        return resp.choices[0].message.content
 
     def _mock_rule(self, prompt: str) -> str:
         """Deterministic mock rules for demo without API key."""

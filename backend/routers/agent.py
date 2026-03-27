@@ -1,15 +1,17 @@
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Depends
 from backend import db
 from backend.services.analyzer import analyze_signal
 from backend.services.ingestion import ingest_github_issues
 from backend.services.bland_caller import call_founder
+from backend.services.ghost import simulate_threshold
+from backend.auth import require_auth
 from datetime import datetime
 
 router = APIRouter(prefix="/agent", tags=["agent"])
 
 
 @router.post("/scan")
-async def run_scan():
+async def run_scan(user=Depends(require_auth)):
     """Analyze all unprocessed signals and take action."""
     unprocessed = await db.fetch_all(
         "SELECT * FROM signals WHERE processed_at IS NULL ORDER BY created_at ASC"
@@ -130,7 +132,7 @@ async def scan_single(signal_id: int):
 
 
 @router.post("/ingest")
-async def ingest(owner: str = "fastapi", repo: str = "fastapi", limit: int = 10):
+async def ingest(owner: str = "fastapi", repo: str = "fastapi", limit: int = 10, user=Depends(require_auth)):
     """Pull real GitHub issues via Airbyte connector and store as signals."""
     stored = await ingest_github_issues(owner=owner, repo=repo, limit=limit)
     return {"ingested": len(stored), "signals": stored}
@@ -172,7 +174,39 @@ async def list_learned_rules():
 
 
 @router.post("/reset-signals")
-async def reset_signals():
-    """Mark all signals as unprocessed (for demo re-runs)."""
-    await db.execute("UPDATE signals SET processed_at = NULL, is_escalated = FALSE, severity_score = 0")
-    return {"reset": True}
+async def reset_signals(full: bool = False, clear_rules: bool = False):
+    """
+    Reset the feedback loop.
+    - Default: mark signals unprocessed (soft reset for demo re-runs)
+    - full=true: delete all signals, decisions, feedback, and accuracy log
+    - clear_rules=true: also wipe learned rules
+    """
+    if full:
+        await db.execute("DELETE FROM feedback")
+        await db.execute("DELETE FROM decisions")
+        await db.execute("DELETE FROM signals")
+        await db.execute("DELETE FROM accuracy_log")
+        deleted = {"signals": True, "decisions": True, "feedback": True, "accuracy_log": True}
+    else:
+        await db.execute("UPDATE signals SET processed_at = NULL, is_escalated = FALSE, severity_score = 0, agent_reasoning = NULL, category = NULL, pr_url = NULL")
+        deleted = {}
+
+    if clear_rules:
+        await db.execute("DELETE FROM learned_rules")
+        deleted["learned_rules"] = True
+
+    return {"reset": True, "full": full, "cleared": deleted}
+
+
+@router.post("/simulate")
+async def simulate(threshold: float = 6.0):
+    """
+    Ghost fork simulation — runs a what-if analysis on an isolated DB copy.
+    Shows how many signals would escalate at a different threshold,
+    without touching production data. Powered by Ghost's fork pattern.
+    """
+    try:
+        result = await simulate_threshold(threshold)
+        return result
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))

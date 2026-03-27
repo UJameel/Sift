@@ -15,14 +15,17 @@ from backend.routers import webhooks
 import overmind
 from backend.config import OVERMIND_API_KEY
 
-# Init Overmind tracing
+# Init Overmind tracing — patches OpenAI calls automatically
 try:
-    if OVERMIND_API_KEY:
-        overmind.init(service_name="sift", api_key=OVERMIND_API_KEY)
-    else:
-        overmind.init(service_name="sift")
+    overmind.init(
+        overmind_api_key=OVERMIND_API_KEY or None,
+        service_name="sift",
+        environment="production",
+        providers=["openai"],
+    )
+    print(f"[Overmind] Tracing active — service=sift providers=[openai]")
 except Exception as e:
-    print(f"[Overmind] Tracing disabled (no API key): {e}")
+    print(f"[Overmind] Init failed: {e}")
 
 
 @asynccontextmanager

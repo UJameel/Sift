@@ -8,7 +8,7 @@ from backend.config import GITHUB_TOKEN
 
 async def ingest_github_issues(owner: str = "fastapi", repo: str = "fastapi", limit: int = 20) -> list[dict]:
     """
-    Fetch open issues from a GitHub repo using the Airbyte agent connector.
+    Fetch open issues from a GitHub repo via Airbyte agent connector (GraphQL).
     Falls back to GitHub REST API if connector unavailable.
     """
     try:
@@ -23,15 +23,39 @@ async def ingest_github_issues(owner: str = "fastapi", repo: str = "fastapi", li
             "owner": owner,
             "repo": repo,
             "states": ["OPEN"],
-            "per_page": limit
+            "per_page": limit,
         })
 
-        issues = result if isinstance(result, list) else result.get("issues", [])
-        return await _store_issues(issues, owner, repo)
+        # Airbyte returns a GithubExecuteResult with .data attribute (list of GraphQL nodes)
+        if hasattr(result, "data"):
+            issues = result.data or []
+        elif isinstance(result, list):
+            issues = result
+        else:
+            issues = result.get("issues", []) if isinstance(result, dict) else []
+
+        print(f"[Airbyte] Fetched {len(issues)} issues from {owner}/{repo}")
+        return await _store_issues(_normalize_airbyte_issues(issues), owner, repo)
 
     except Exception as e:
-        print(f"Airbyte connector failed ({e}), falling back to GitHub REST API")
+        print(f"[Airbyte] Connector failed ({e}), falling back to GitHub REST API")
         return await _fetch_via_rest(owner, repo, limit)
+
+
+def _normalize_airbyte_issues(issues: list) -> list[dict]:
+    """Map Airbyte GraphQL fields to the shape _store_issues expects."""
+    normalized = []
+    for issue in issues:
+        if not isinstance(issue, dict):
+            issue = dict(issue) if hasattr(issue, "__dict__") else vars(issue)
+        normalized.append({
+            "number": issue.get("number") or issue.get("databaseId"),
+            "title": issue.get("title", ""),
+            "body": issue.get("body", "") or "",
+            "user": {"login": (issue.get("author") or {}).get("login", "unknown")},
+            "pull_request": None,  # Airbyte issues endpoint doesn't return PRs
+        })
+    return normalized
 
 
 async def _fetch_via_rest(owner: str, repo: str, limit: int) -> list[dict]:

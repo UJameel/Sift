@@ -580,6 +580,7 @@ function App() {
   const [injectForm, setInjectForm] = useState({ title: '', body: '', source: 'github_issue', author: '' });
   const [showInject, setShowInject] = useState(false);
   const [showIngest, setShowIngest] = useState(false);
+  const [showReset, setShowReset] = useState(false);
   const [repoUrl, setRepoUrl] = useState('');
   const [repoLimit, setRepoLimit] = useState(10);
   const toastId = useRef(0);
@@ -692,9 +693,16 @@ function App() {
     }
   };
 
-  const resetSignals = async () => {
-    await api('/agent/reset-signals', { method: 'POST' });
-    toast('Signals reset — ready for another demo scan', 'info');
+  const resetSignals = async (full = false, clearRules = false) => {
+    const params = new URLSearchParams();
+    if (full) params.set('full', 'true');
+    if (clearRules) params.set('clear_rules', 'true');
+    const qs = params.toString() ? '?' + params.toString() : '';
+    await api('/agent/reset-signals' + qs, { method: 'POST' });
+    const msg = full
+      ? clearRules ? 'Full reset — signals, decisions, feedback & learned rules cleared' : 'Full reset — signals, decisions & feedback cleared'
+      : 'Signals reset — ready for another demo scan';
+    toast(msg, 'info');
     await load();
   };
 
@@ -718,7 +726,25 @@ function App() {
         <div className="header-actions">
           <button className="btn btn-ghost btn-sm" onClick={() => setShowIngest(v => !v)}>⬇ Ingest GitHub</button>
           <button className="btn btn-ghost btn-sm" onClick={() => setShowInject(v => !v)}>+ Inject Signal</button>
-          <button className="btn btn-ghost btn-sm" onClick={resetSignals}>↺ Reset</button>
+          <div style={{position:'relative',display:'inline-block'}} className="reset-menu-wrap">
+            <button className="btn btn-ghost btn-sm" onClick={() => setShowReset(v => !v)}>↺ Reset ▾</button>
+            {showReset && (
+              <div style={{position:'absolute',right:0,top:'110%',background:'var(--surface)',border:'1px solid var(--border)',borderRadius:8,minWidth:220,zIndex:100,boxShadow:'0 4px 16px rgba(0,0,0,0.3)'}}>
+                <button className="btn btn-ghost btn-sm" style={{width:'100%',textAlign:'left',padding:'10px 14px',borderRadius:0}} onClick={() => { setShowReset(false); resetSignals(false, false); }}>
+                  ↺ Soft reset — re-run scan
+                  <div style={{fontSize:11,opacity:.6}}>Marks signals unprocessed</div>
+                </button>
+                <button className="btn btn-ghost btn-sm" style={{width:'100%',textAlign:'left',padding:'10px 14px',borderRadius:0}} onClick={() => { setShowReset(false); resetSignals(true, false); }}>
+                  🗑 Full reset — clear all data
+                  <div style={{fontSize:11,opacity:.6}}>Deletes signals, decisions & feedback</div>
+                </button>
+                <button className="btn btn-danger btn-sm" style={{width:'100%',textAlign:'left',padding:'10px 14px',borderRadius:0}} onClick={() => { setShowReset(false); resetSignals(true, true); }}>
+                  ⚠ Full reset + clear learned rules
+                  <div style={{fontSize:11,opacity:.6}}>Start the feedback loop from scratch</div>
+                </button>
+              </div>
+            )}
+          </div>
           <button
             className="btn btn-primary"
             onClick={runScan}
@@ -988,8 +1014,14 @@ function App() {
               <button className="btn btn-ghost" style={{justifyContent:'flex-start'}} onClick={() => setShowInject(true)}>
                 + Inject demo signal
               </button>
-              <button className="btn btn-danger" style={{justifyContent:'flex-start'}} onClick={resetSignals}>
-                ↺ Reset all signals
+              <button className="btn btn-ghost" style={{justifyContent:'flex-start'}} onClick={() => resetSignals(false, false)}>
+                ↺ Soft reset — re-run scan
+              </button>
+              <button className="btn btn-ghost" style={{justifyContent:'flex-start'}} onClick={() => resetSignals(true, false)}>
+                🗑 Full reset — clear all data
+              </button>
+              <button className="btn btn-danger" style={{justifyContent:'flex-start'}} onClick={() => resetSignals(true, true)}>
+                ⚠ Full reset + clear learned rules
               </button>
             </div>
           </div>
