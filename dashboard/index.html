@@ -4,6 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Sift — your product's feedback, distilled.</title>
+  <script src="https://cdn.auth0.com/js/auth0-spa-js/2.0/auth0-spa-js.production.js"></script>
   <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
   <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
   <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
@@ -455,12 +456,35 @@
 const { useState, useEffect, useRef, useCallback } = React;
 
 const API = '';
+const AUTH0_DOMAIN = 'dev-4h53djmje5bsp5xn.us.auth0.com';
+const AUTH0_CLIENT_ID = 'JP7oNKea8HAJSCrx3GcaL12z3z0L611Y';
+
+let _auth0Client = null;
+
+async function getAuth0Client() {
+  if (!_auth0Client) {
+    _auth0Client = await auth0.createAuth0Client({
+      domain: AUTH0_DOMAIN,
+      clientId: AUTH0_CLIENT_ID,
+      authorizationParams: { redirect_uri: window.location.origin },
+      cacheLocation: 'localstorage',
+    });
+  }
+  return _auth0Client;
+}
 
 async function api(path, opts = {}) {
-  const r = await fetch(API + path, {
-    headers: { 'Content-Type': 'application/json' },
-    ...opts
-  });
+  const headers = { 'Content-Type': 'application/json' };
+  try {
+    const client = await getAuth0Client();
+    const isAuthed = await client.isAuthenticated();
+    if (isAuthed) {
+      const claims = await client.getIdTokenClaims();
+      if (claims) headers['Authorization'] = `Bearer ${claims.__raw}`;
+    }
+  } catch (_) {}
+
+  const r = await fetch(API + path, { headers, ...opts });
   if (!r.ok) throw new Error(`${r.status}: ${await r.text()}`);
   return r.json();
 }
@@ -569,6 +593,10 @@ function parseGitHubUrl(url) {
 }
 
 function App() {
+  const [authLoading, setAuthLoading] = useState(true);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [authUser, setAuthUser] = useState(null);
+
   const [signals, setSignals] = useState([]);
   const [decisions, setDecisions] = useState([]);
   const [rules, setRules] = useState([]);
@@ -584,6 +612,37 @@ function App() {
   const [repoUrl, setRepoUrl] = useState('');
   const [repoLimit, setRepoLimit] = useState(10);
   const toastId = useRef(0);
+
+  // Auth0 initialization
+  useEffect(() => {
+    (async () => {
+      try {
+        const client = await getAuth0Client();
+        // Handle callback after redirect
+        if (window.location.search.includes('code=') && window.location.search.includes('state=')) {
+          await client.handleRedirectCallback();
+          window.history.replaceState({}, document.title, window.location.pathname);
+        }
+        const authed = await client.isAuthenticated();
+        setIsAuthenticated(authed);
+        if (authed) setAuthUser(await client.getUser());
+      } catch (e) {
+        console.error('Auth0 init error', e);
+      } finally {
+        setAuthLoading(false);
+      }
+    })();
+  }, []);
+
+  const login = async () => {
+    const client = await getAuth0Client();
+    await client.loginWithRedirect();
+  };
+
+  const logout = async () => {
+    const client = await getAuth0Client();
+    await client.logout({ logoutParams: { returnTo: window.location.origin } });
+  };
 
   const toast = (msg, type = 'info') => {
     const id = ++toastId.current;
@@ -715,6 +774,33 @@ function App() {
 
   const unprocessed = signals.filter(s => !s.processed_at).length;
 
+  // Auth loading screen
+  if (authLoading) return (
+    <div style={{display:'flex',alignItems:'center',justifyContent:'center',height:'100vh',flexDirection:'column',gap:16,background:'var(--bg)'}}>
+      <div className="logo-dot" style={{width:16,height:16,animation:'pulse 1.5s ease-in-out infinite'}} />
+      <span style={{color:'var(--text3)',fontSize:14}}>Initialising Sift...</span>
+    </div>
+  );
+
+  // Login gate
+  if (!isAuthenticated) return (
+    <div style={{display:'flex',alignItems:'center',justifyContent:'center',height:'100vh',background:'var(--bg)'}}>
+      <div style={{textAlign:'center',maxWidth:360,padding:40,background:'var(--surface)',borderRadius:16,border:'1px solid var(--border)',boxShadow:'0 8px 40px rgba(0,0,0,0.4)'}}>
+        <div style={{display:'flex',alignItems:'center',justifyContent:'center',gap:10,marginBottom:24}}>
+          <div className="logo-dot" style={{width:14,height:14}} />
+          <span style={{fontSize:24,fontWeight:700,letterSpacing:'-0.5px'}}>Sift</span>
+        </div>
+        <p style={{color:'var(--text2)',fontSize:14,marginBottom:8,lineHeight:1.6}}>
+          Autonomous product signal monitoring.<br/>Sign in to access your dashboard.
+        </p>
+        <p style={{color:'var(--text3)',fontSize:12,marginBottom:28}}>Secured by Auth0</p>
+        <button className="btn btn-primary" style={{width:'100%',padding:'12px 0',fontSize:15}} onClick={login}>
+          Sign in with Auth0
+        </button>
+      </div>
+    </div>
+  );
+
   return (
     <>
       <header className="header">
@@ -745,6 +831,16 @@ function App() {
               </div>
             )}
           </div>
+          {authUser && (
+            <div style={{display:'flex',alignItems:'center',gap:8,borderLeft:'1px solid var(--border)',paddingLeft:12,marginLeft:4}}>
+              {authUser.picture
+                ? <img src={authUser.picture} alt="" style={{width:26,height:26,borderRadius:'50%',border:'1px solid var(--border)'}} />
+                : <div style={{width:26,height:26,borderRadius:'50%',background:'var(--primary)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:11,fontWeight:600}}>{(authUser.name||authUser.email||'U')[0].toUpperCase()}</div>
+              }
+              <span style={{fontSize:12,color:'var(--text2)',maxWidth:120,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{authUser.name || authUser.email}</span>
+              <button className="btn btn-ghost btn-sm" style={{padding:'4px 8px',fontSize:11}} onClick={logout}>Sign out</button>
+            </div>
+          )}
           <button
             className="btn btn-primary"
             onClick={runScan}
