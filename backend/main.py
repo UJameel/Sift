@@ -13,7 +13,7 @@ from backend.routers import feedback
 from backend.routers import webhooks
 
 import overmind
-from backend.config import OVERMIND_API_KEY
+from backend.config import OVERMIND_API_KEY, GITHUB_TOKEN
 
 # Init Overmind tracing
 try:
@@ -24,6 +24,9 @@ try:
 except Exception as e:
     print(f"[Overmind] Tracing disabled (no API key): {e}")
 
+# Log warning if GITHUB_TOKEN is missing
+if not GITHUB_TOKEN:
+    print("[Warning] GITHUB_TOKEN is missing from the environment variables. GitHub API calls will fail.")
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
