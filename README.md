@@ -1,12 +1,12 @@
 <div align="center">
 
-```
- _____ _  __ _
-/ ____(_)/ _| |_
-| (___  | |_| __|
- \___ \ | |  | |_
- ____) || | |_\__|
-|_____/_|_|\__|
+```diff
++  _____ _  __ _
++ / ____(_)/ _| |_
++ | (___  | |_| __|
++  \___ \ | |  | |_
++  ____) || | |_\__|
++ |_____/_|_|\__|
 ```
 
 ### your product's feedback, distilled.
@@ -281,6 +281,17 @@ sift/
 | **Bland AI + Norm** | Norm-built voice pathway calls the founder when severity ≥ 7. Captures verbal response, feeds it back into the learning loop. Inbound fallback: `+14153601802` |
 | **Overmind** | `overmind.init(providers=["openai"])` at startup — every GPT-4o/4o-mini call is auto-traced. Latency, cost, and quality visible in the Overmind dashboard |
 | **Auth0** | JWT middleware on all protected routes. SPA login gate with RS256 token verification against Auth0 JWKS |
+
+---
+
+## Links
+
+| | |
+|---|---|
+| **DevPost** | [devpost.com/software/sift-yowran](https://devpost.com/software/sift-yowran) |
+| **GitHub** | [github.com/UJameel/Sift](https://github.com/UJameel/Sift) |
+| **Demo (Loom)** | [Watch the demo](https://www.loom.com/share/25b3ea2ae37e4857afc8ac96c3f7ecff) |
+| **Shipables** | [shipables.dev/skills/UJameel%2FSift](https://shipables.dev/skills/UJameel%2FSift) |
 
 ---
 
